@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Reservations</title><link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav id="nav"></nav>
+  <div class="container"><div class="card">
+    <h2>My Reservations</h2>
+    <div id="msg" class="msg"></div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>#</th><th>Date</th><th>Time</th><th>Table</th><th>Guests</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div></div>
+  <script src="/js/common.js"></script>
+  <script>
+    loadNav();
+    async function load() {
+      try {
+        const list = await api('/api/reservations/mine');
+        document.getElementById('rows').innerHTML = list.length ? list.map(r => `
+          <tr>
+            <td>${r.reservation_id}</td><td>${r.reservation_date}</td><td>${formatTime(r.reservation_time)}</td>
+            <td>${escapeHtml(r.table_number)} (${escapeHtml(r.location)})</td><td>${r.guests}</td>
+            <td><span class="badge ${r.status}">${r.status}</span></td>
+            <td>${['Pending','Confirmed'].includes(r.status)
+                ? `<button class="btn small red" onclick="cancelRes(${r.reservation_id})">Cancel</button>` : '-'}</td>
+          </tr>`).join('') : '<tr><td colspan="7" class="muted">No reservations yet.</td></tr>';
+      } catch (e) { window.location.href = '/login.html'; }
+    }
+    async function cancelRes(id) {
+      if (!confirm('Cancel this reservation?')) return;
+      try { await api(`/api/reservations/${id}/cancel`, 'PATCH'); load(); }
+      catch (e) { showMsg('msg', e.message, 'err'); }
+    }
+    load();
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register</title><link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav id="nav"></nav>
+  <div class="container auth-box"><div class="card">
+    <h2>Create Account</h2>
+    <div id="msg" class="msg"></div>
+    <label>Name</label><input id="name" placeholder="Your full name">
+    <label>Email</label><input id="email" type="email" placeholder="you@example.com">
+    <label>Phone</label><input id="phone" placeholder="9876543210" maxlength="15">
+    <label>Password</label><input id="password" type="password" placeholder="Minimum 6 characters">
+    <br><br><button class="btn" id="btn">Register</button>
+    <p class="muted" style="margin-top:12px">Already have an account? <a href="/login.html">Login</a></p>
+  </div></div>
+  <script src="/js/common.js"></script>
+  <script>
+    loadNav();
+    document.getElementById('btn').addEventListener('click', async () => {
+      try {
+        await api('/api/auth/register', 'POST', {
+          name: name.value, email: email.value, phone: phone.value, password: password.value
+        });
+        window.location.href = '/book.html';
+      } catch (e) { showMsg('msg', e.message, 'err'); }
+    });
+  </script>
+</body>
+</html>

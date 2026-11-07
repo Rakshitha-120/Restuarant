@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff Panel</title><link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav id="nav"></nav>
+  <div class="container">
+
+    <!-- Staff login -->
+    <div id="loginBox" class="card auth-box" style="display:none">
+      <h2>Staff Login</h2>
+      <div id="loginMsg" class="msg"></div>
+      <label>Username</label><input id="username">
+      <label>Password</label><input id="password" type="password">
+      <br><br><button class="btn" id="loginBtn">Login</button>
+    </div>
+
+    <!-- Staff dashboard -->
+    <div id="panel" style="display:none">
+      <div class="card">
+        <h2>Manage Reservations</h2>
+        <div class="row">
+          <div><label>Filter by date</label><input type="date" id="fDate"></div>
+          <div><label>Filter by status</label>
+            <select id="fStatus"><option value="">All</option><option>Pending</option><option>Confirmed</option><option>Cancelled</option><option>Completed</option></select>
+          </div>
+          <div><button class="btn" id="filterBtn">Apply</button> <button class="btn gray" id="clearBtn">Clear</button></div>
+        </div>
+        <div id="msg" class="msg"></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>#</th><th>Customer</th><th>Phone</th><th>Date</th><th>Time</th><th>Table</th><th>Guests</th><th>Status</th><th>Change</th></tr></thead>
+            <tbody id="resRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Manage Tables</h2>
+        <div class="row">
+          <div><label>Table No.</label><input id="tNo" placeholder="T12"></div>
+          <div><label>Seats</label><input id="tSeats" type="number" min="1" value="4"></div>
+          <div><label>Location</label>
+            <select id="tLoc"><option>Indoor</option><option>Outdoor</option><option>Window</option><option>Private</option></select>
+          </div>
+          <div><button class="btn" id="addTableBtn">Add Table</button></div>
+        </div>
+        <br>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>Table</th><th>Seats</th><th>Location</th><th>Status</th><th>Change</th></tr></thead>
+            <tbody id="tblRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const me = await loadNav();
+      if (me.isStaff) { panel.style.display = 'block'; loadReservations(); loadTables(); }
+      else loginBox.style.display = 'block';
+    })();
+
+    loginBtn.addEventListener('click', async () => {
+      try {
+        await api('/api/auth/staff-login', 'POST', { username: username.value, password: password.value });
+        window.location.reload();
+      } catch (e) { showMsg('loginMsg', e.message, 'err'); }
+    });
+
+    async function loadReservations() {
+      let url = '/api/admin/reservations?';
+      if (fDate.value) url += `date=${fDate.value}&`;
+      if (fStatus.value) url += `status=${fStatus.value}`;
+      const list = await api(url);
+      resRows.innerHTML = list.length ? list.map(r => `
+        <tr>
+          <td>${r.reservation_id}</td><td>${escapeHtml(r.customer_name)}</td><td>${escapeHtml(r.customer_phone)}</td>
+          <td>${r.reservation_date}</td><td>${formatTime(r.reservation_time)}</td>
+          <td>${escapeHtml(r.table_number)}</td><td>${r.guests}</td>
+          <td><span class="badge ${r.status}">${r.status}</span></td>
+          <td>
+            <button class="btn small green" onclick="setRes(${r.reservation_id},'Confirmed')">Confirm</button>
+            <button class="btn small gray" onclick="setRes(${r.reservation_id},'Completed')">Complete</button>
+            <button class="btn small red" onclick="setRes(${r.reservation_id},'Cancelled')">Cancel</button>
+          </td>
+        </tr>`).join('') : '<tr><td colspan="9" class="muted">No reservations found.</td></tr>';
+    }
+    async function setRes(id, status) {
+      try { await api(`/api/admin/reservations/${id}/status`, 'PATCH', { status }); showMsg('msg', `Reservation #${id} → ${status}`, 'ok'); loadReservations(); }
+      catch (e) { showMsg('msg', e.message, 'err'); }
+    }
+    filterBtn.addEventListener('click', loadReservations);
+    clearBtn.addEventListener('click', () => { fDate.value = ''; fStatus.value = ''; loadReservations(); });
+
+    async function loadTables() {
+      const list = await api('/api/admin/tables');
+      tblRows.innerHTML = list.map(t => `
+        <tr>
+          <td>${escapeHtml(t.table_number)}</td><td>${t.seating_capacity}</td><td>${escapeHtml(t.location)}</td>
+          <td><span class="badge ${t.status}">${t.status}</span></td>
+          <td>${t.status === 'Available'
+            ? `<button class="btn small red" onclick="setTable(${t.table_id},'Maintenance')">Set Maintenance</button>`
+            : `<button class="btn small green" onclick="setTable(${t.table_id},'Available')">Set Available</button>`}</td>
+        </tr>`).join('');
+    }
+    async function setTable(id, status) {
+      try { await api(`/api/admin/tables/${id}/status`, 'PATCH', { status }); loadTables(); }
+      catch (e) { showMsg('msg', e.message, 'err'); }
+    }
+    addTableBtn.addEventListener('click', async () => {
+      try {
+        await api('/api/admin/tables', 'POST', { table_number: tNo.value, seating_capacity: Number(tSeats.value), location: tLoc.value });
+        tNo.value = ''; showMsg('msg', 'Table added.', 'ok'); loadTables();
+      } catch (e) { showMsg('msg', e.message, 'err'); }
+    });
+  </script>
+</body>
+</html>

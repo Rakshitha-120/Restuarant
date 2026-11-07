@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login</title><link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav id="nav"></nav>
+  <div class="container auth-box"><div class="card">
+    <h2>Customer Login</h2>
+    <div id="msg" class="msg"></div>
+    <label>Email</label><input id="email" type="email" placeholder="you@example.com">
+    <label>Password</label><input id="password" type="password">
+    <br><br><button class="btn" id="btn">Login</button>
+    <p class="muted" style="margin-top:12px">New here? <a href="/register.html">Create an account</a></p>
+  </div></div>
+  <script src="/js/common.js"></script>
+  <script>
+    loadNav();
+    document.getElementById('btn').addEventListener('click', async () => {
+      try {
+        await api('/api/auth/login', 'POST', { email: email.value, password: password.value });
+        window.location.href = '/book.html';
+      } catch (e) { showMsg('msg', e.message, 'err'); }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book a Table</title><link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav id="nav"></nav>
+  <div class="container">
+    <div class="card">
+      <h2>Find Available Tables</h2>
+      <div class="row">
+        <div><label>Date</label><input type="date" id="date"></div>
+        <div><label>Time</label>
+          <select id="time"></select>
+        </div>
+        <div><label>Guests</label><input type="number" id="guests" min="1" max="12" value="2"></div>
+        <div><button class="btn" id="searchBtn">Check Availability</button></div>
+      </div>
+      <div id="msg" class="msg"></div>
+      <div id="tables" class="tables-grid"></div>
+    </div>
+  </div>
+  <script src="/js/common.js"></script>
+  <script>
+    let me = null;
+    (async () => { me = await loadNav(); })();
+
+    // Date: today onwards. Time slots: 11:00 to 22:00 every 30 min
+    const today = new Date().toISOString().slice(0, 10);
+    date.min = today; date.value = today;
+    for (let h = 11; h <= 22; h++) {
+      for (const m of ['00', '30']) {
+        if (h === 22 && m === '30') continue;
+        const v = `${String(h).padStart(2, '0')}:${m}`;
+        time.insertAdjacentHTML('beforeend', `<option value="${v}">${formatTime(v)}</option>`);
+      }
+    }
+    time.value = '19:00';
+
+    document.getElementById('searchBtn').addEventListener('click', async () => {
+      const box = document.getElementById('tables');
+      box.innerHTML = '';
+      try {
+        const list = await api(`/api/tables/available?date=${date.value}&time=${time.value}&guests=${guests.value}`);
+        if (!list.length) { showMsg('msg', 'No tables available for this slot. Try another time.', 'err'); return; }
+        showMsg('msg', `${list.length} table(s) available`, 'ok');
+        box.innerHTML = list.map(t => `
+          <div class="table-box">
+            <h3>Table ${escapeHtml(t.table_number)}</h3>
+            <p>${t.seating_capacity} seats · ${escapeHtml(t.location)}</p>
+            <button class="btn small" onclick="book(${t.table_id})">Book this table</button>
+          </div>`).join('');
+      } catch (e) { showMsg('msg', e.message, 'err'); }
+    });
+
+    async function book(tableId) {
+      if (!me || !me.customer) { window.location.href = '/login.html'; return; }
+      try {
+        const r = await api('/api/reservations', 'POST', {
+          table_id: tableId, reservation_date: date.value,
+          reservation_time: time.value + ':00', guests: Number(guests.value)
+        });
+        showMsg('msg', r.message, 'ok');
+        document.getElementById('tables').innerHTML = '';
+      } catch (e) { showMsg('msg', e.message, 'err'); }
+    }
+  </script>
+</body>
+</html>
